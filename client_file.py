@@ -16,22 +16,33 @@ class FileClientApp:
         self.root.title("File Client")
         self.root.geometry("500x500")
 
-        self.download_button = tk.Button(root, text="Download", command=self.show_download_window)
-        self.download_button.pack(pady=10)
-
-        self.upload_button = tk.Button(root, text="Upload", command=self.upload_file)
-        self.upload_button.pack(pady=10)
-
-        self.collaborate_button = tk.Button(root, text="Collaborate", command=self.show_collab_window)
-        self.collaborate_button.pack(pady=10)
+        self.style_gui()
 
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client_socket.connect((HOST, PORT))
+
+    def style_gui(self):
+        # Apply styling to the main window
+        self.root.configure(bg="lightblue")
+
+        # Center the buttons in the main window
+        self.button_frame = tk.Frame(self.root, bg="lightblue")
+        self.button_frame.pack(expand=True)
+
+        self.download_button = tk.Button(self.button_frame, text="Download", command=self.show_download_window, bg="lightpink", fg="black")
+        self.download_button.pack(pady=10)
+
+        self.upload_button = tk.Button(self.button_frame, text="Upload", command=self.upload_file, bg="lightpink", fg="black")
+        self.upload_button.pack(pady=10)
+
+        self.collaborate_button = tk.Button(self.button_frame, text="Collaborate", command=self.show_collab_window, bg="lightpink", fg="black")
+        self.collaborate_button.pack(pady=10)
 
     def show_download_window(self):
         download_window = Toplevel(self.root)
         download_window.title("Download File")
         download_window.geometry("500x500")
+        download_window.configure(bg="lightblue")
 
         scrollbar = Scrollbar(download_window)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
@@ -47,14 +58,17 @@ class FileClientApp:
 
         scrollbar.config(command=self.file_listbox.yview)
 
-        download_button = tk.Button(download_window, text="Download Selected", command=self.download_selected_file)
-        download_button.pack(pady=5)
+        button_frame = tk.Frame(download_window, bg="lightblue")
+        button_frame.pack(pady=10)
 
-        manual_download_button = tk.Button(download_window, text="Enter File Name", command=self.download_manual_file)
-        manual_download_button.pack(pady=5)
+        download_button = tk.Button(button_frame, text="Download Selected", command=self.download_selected_file, bg="lightpink", fg="black")
+        download_button.pack(side=tk.LEFT, padx=5)
 
-        close_button = tk.Button(download_window, text="Close", command=download_window.destroy)
-        close_button.pack(pady=5)
+        manual_download_button = tk.Button(button_frame, text="Enter File Name", command=self.download_manual_file, bg="lightpink", fg="black")
+        manual_download_button.pack(side=tk.LEFT, padx=5)
+
+        close_button = tk.Button(button_frame, text="Close", command=download_window.destroy, bg="lightpink", fg="black")
+        close_button.pack(side=tk.LEFT, padx=5)
 
     def download_selected_file(self):
         selected_file = self.file_listbox.get(tk.ACTIVE)
@@ -106,8 +120,9 @@ class FileClientApp:
 
     def show_collab_window(self):
         collab_window = Toplevel(self.root)
-        collab_window.title("Select File to Collaborate")
+        collab_window.title("Select File to Collaborate [PDFs cannot be edited]")
         collab_window.geometry("300x300")
+        collab_window.configure(bg="lightblue")
 
         scrollbar = Scrollbar(collab_window)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
@@ -127,7 +142,7 @@ class FileClientApp:
             if selected_file:
                 self.open_collab_editor(selected_file)
 
-        select_button = tk.Button(collab_window, text="Select", command=on_file_select)
+        select_button = tk.Button(collab_window, text="Select", command=on_file_select, bg="lightpink", fg="black")
         select_button.pack(pady=5)
 
     def open_collab_editor(self, filename):
@@ -137,8 +152,9 @@ class FileClientApp:
         editor_window = Toplevel(self.root)
         editor_window.title("Collaborate on File")
         editor_window.geometry("500x500")
+        editor_window.configure(bg="lightblue")
 
-        collab_text = tk.Text(editor_window, wrap=tk.WORD)
+        collab_text = tk.Text(editor_window, wrap=tk.WORD, bg="white", fg="black")
         collab_text.insert(tk.END, initial_content)
         collab_text.pack(expand=True, fill=tk.BOTH)
 
