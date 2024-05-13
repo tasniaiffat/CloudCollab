@@ -1,76 +1,103 @@
-import socket 
-import tqdm
+import socket
 import os
+import tqdm
+import tkinter as tk
+from tkinter import messagebox, simpledialog, Listbox, Scrollbar, Toplevel
 
-BUFFER_SIZE = 4096 
-host = 'localhost'
+BUFFER_SIZE = 4096
+HOST = 'localhost'
+PORT = 7071
 FORMAT = 'utf-8'
-port = 7071
 
-def file_download(client_socket):
-    arr = []
+class FileClientApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("File Client")
+        self.root.geometry("500x500")
 
-    file_recv = client_socket.recv(1024).decode()
-    arr.append(file_recv)
-    print(f"{file_recv}")
+        self.download_button = tk.Button(root, text="Download", command=self.show_download_window)
+        self.download_button.pack(pady=10)
 
-    selected_file = input("Which file do you want to download? -> ") 
-    client_socket.send(selected_file.encode(FORMAT))
+        self.upload_button = tk.Button(root, text="Upload", command=self.upload_file)
+        self.upload_button.pack(pady=10)
 
-    file_size = client_socket.recv(1024).decode()
-    print(f"File size: {file_size} bytes")
+        self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.client_socket.connect((HOST, PORT))
 
-    downloads_dir = "./Downloads/"
-    # if not os.path.exists(downloads_dir):
-    #     os.makedirs(downloads_dir)
-        
-    name = downloads_dir+selected_file
-    file = open(name, "wb")
+    def show_download_window(self):
+        download_window = Toplevel(self.root)
+        download_window.title("Download File")
+        download_window.geometry("500x500")
 
-    progress = tqdm.tqdm(unit="B", unit_scale=True, unit_divisor=1000, total=float(file_size))
-    data_bytes = b""
-    while True:
-        data = client_socket.recv(1024)
-        if data_bytes[-5:] == b"<END>":
-            break
-        file.write(data)
-        data_bytes += data
-        progress.update(len(data))
+        scrollbar = Scrollbar(download_window)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-    file.close()
-    print("File received successfully.")
-    client_socket.close()
+        self.file_listbox = Listbox(download_window, yscrollcommand=scrollbar.set)
+        self.file_listbox.pack(expand=True, fill=tk.BOTH)
 
-def file_upload(client_socket):
-    filename = input("Which file do you want to upload?")
-    filesize = str(os.path.getsize(filename))
-    print(filename)
-    print(filesize)
-    client_socket.send(filename.encode(FORMAT))
-    client_socket.send(filesize.encode(FORMAT))
+        self.client_socket.send("download".encode(FORMAT))
+        files = self.client_socket.recv(1024).decode(FORMAT).split("\n")
 
-    file=open(filename,"rb")
-    data=file.read()
-    file.close()
+        for file in files:
+            self.file_listbox.insert(tk.END, file)
 
-    file = open(filename, "rb")
-    data = file.read()
-    file.close()
-    data = data + b"<END>"
-    client_socket.sendall(data)
+        scrollbar.config(command=self.file_listbox.yview)
 
-    client_socket.close()
+        download_button = tk.Button(download_window, text="Download Selected", command=self.download_selected_file)
+        download_button.pack(pady=5)
 
-client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        manual_download_button = tk.Button(download_window, text="Enter File Name", command=self.download_manual_file)
+        manual_download_button.pack(pady=5)
 
-print(f"[+] Connecting to {host} : {port}")
-client_socket.connect((host, port))
-print("[+] Connected.")
+    def download_selected_file(self):
+        selected_file = self.file_listbox.get(tk.ACTIVE)
+        if selected_file:
+            self.client_socket.send(selected_file.encode(FORMAT))
+            self.receive_file(selected_file)
 
-option = input("Do you want to download or upload file?")
-client_socket.send(option.encode(FORMAT))
+    def download_manual_file(self):
+        selected_file = simpledialog.askstring("Download File", "Enter the file name to download:")
+        if selected_file:
+            self.client_socket.send(selected_file.encode(FORMAT))
+            self.receive_file(selected_file)
 
-if option == "download":
-    file_download(client_socket)
-else:
-    file_upload(client_socket)
+    def receive_file(self, filename):
+        file_size = self.client_socket.recv(1024).decode()
+        print(f"File size: {file_size} bytes")
+
+        downloads_dir = "./Downloads/"
+        os.makedirs(downloads_dir, exist_ok=True)
+
+        file_path = os.path.join(downloads_dir, filename)
+        with open(file_path, "wb") as file:
+            progress = tqdm.tqdm(unit="B", unit_scale=True, unit_divisor=1000, total=float(file_size))
+            data_bytes = b""
+            while True:
+                data = self.client_socket.recv(1024)
+                if data_bytes[-5:] == b"<END>":
+                    break
+                file.write(data)
+                data_bytes += data
+                progress.update(len(data))
+        print("File received successfully.")
+
+    def upload_file(self):
+        self.client_socket.send("upload".encode(FORMAT))
+        filename = simpledialog.askstring("Upload File", "Enter the file name to upload:")
+
+        if filename and os.path.isfile(filename):
+            filesize = str(os.path.getsize(filename))
+            self.client_socket.send(filename.encode(FORMAT))
+            self.client_socket.send(filesize.encode(FORMAT))
+
+            with open(filename, "rb") as file:
+                data = file.read() + b"<END>"
+                self.client_socket.sendall(data)
+            print("File sent successfully.")
+        else:
+            messagebox.showerror("Error", "File not found!")
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = FileClientApp(root)
+    root.mainloop()
