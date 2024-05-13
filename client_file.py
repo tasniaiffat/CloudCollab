@@ -14,7 +14,7 @@ class FileClientApp:
     def __init__(self, root, client_name):
         self.root = root
         self.client_name = client_name
-        self.root.title(f"File Client - {self.client_name}")
+        self.root.title(f"CloudCollab - {self.client_name}")
         self.root.geometry("500x500")
 
         self.style_gui()
