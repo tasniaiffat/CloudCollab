@@ -7,14 +7,14 @@ import threading
 
 BUFFER_SIZE = 4096
 HOST = 'localhost'
-PORT = 7072
+PORT = 7070
 FORMAT = 'utf-8'
 
 class FileClientApp:
     def __init__(self, root, client_name):
         self.root = root
         self.client_name = client_name
-        self.root.title(f"CloudCollab - {self.client_name}")
+        self.root.title(f"File Client - {self.client_name}")
         self.root.geometry("500x500")
 
         self.style_gui()
@@ -86,22 +86,31 @@ class FileClientApp:
     def receive_file(self, filename):
         file_size = self.client_socket.recv(1024).decode()
         print(f"File size: {file_size} bytes")
-
+        self.client_socket.send("sz".encode())
         downloads_dir = "./Downloads/"
         os.makedirs(downloads_dir, exist_ok=True)
 
         file_path = os.path.join(downloads_dir, filename)
-        with open(file_path, "wb") as file:
-            progress = tqdm.tqdm(unit="B", unit_scale=True, unit_divisor=1000, total=float(file_size))
-            data_bytes = b""
-            while True:
-                data = self.client_socket.recv(1024)
-                if data_bytes[-5:] == b"<END>":
+        file = open(file_path, "wb")
+
+        current_packet = 0
+        while True:
+            if current_packet == file_size:
+                break
+            try:
+                file_data = self.client_socket.recv(1024)
+                if not file_data:
                     break
-                file.write(data)
-                data_bytes += data
-                progress.update(len(data))
-        print("File received successfully.")
+                file.write(file_data)
+                self.client_socket.send("ACK".encode())  # sending ACK for each packet received
+                current_packet += 1
+                print(f"Packet {current_packet} received.")
+            except:
+                continue
+        file.close()
+
+        print(f"Total {current_packet} Packet  received.")
+        print("file has been received successfully..")
 
     def upload_file(self):
         self.client_socket.send("upload".encode(FORMAT))
@@ -110,12 +119,60 @@ class FileClientApp:
         if filename and os.path.isfile(filename):
             filesize = str(os.path.getsize(filename))
             self.client_socket.send(filename.encode(FORMAT))
-            self.client_socket.send(filesize.encode(FORMAT))
+            # self.client_socket.send(filesize.encode(FORMAT))
 
-            with open(filename, "rb") as file:
-                data = file.read() + b"<END>"
-                self.client_socket.sendall(data)
-            print("File sent successfully.")
+### Send with implemented TCP Flow Control and TCP Conjestion control
+
+            filesize = int(filesize)
+            seq_num = 0
+            cwnd = 1
+            ssthresh = 1024
+            # ack = conn.recv(1024).decode()
+
+            file = open(filename, "rb")
+            window_size = 4  # set the window size to 4
+            packets = []
+            current_packet = 0
+            total_packets = (filesize // 1024) + 1
+            
+            print(total_packets)
+            self.client_socket.send(str(total_packets).encode(FORMAT))
+
+            for i in range(total_packets):
+                file_data = file.read(1024)
+                packets.append(file_data)
+            self.client_socket.send(f"{total_packets}".encode())
+            # print(basename)
+            ackk = self.client_socket.recv(1024).decode()
+            if ackk == "sz":
+                while current_packet < total_packets:
+                    for i in range(total_packets):
+                        self.client_socket.send(packets[i])
+                        # print(packets[i])
+                        try:
+                            ack = self.client_socket.recv(1024).decode()
+                            if ack == "ACK":
+                                current_packet += 1
+                                if seq_num == len(file_data):
+                                    # All packets have been acknowledged
+                                    break
+                                if cwnd < ssthresh:
+                                    cwnd *= 2
+                                else:
+                                    cwnd += 1
+                            print(cwnd)
+                            print(f"Packet {current_packet} acknowledged.")
+                        except:
+                            ssthresh=max(cwnd/2,1)
+                            cwnd=1
+
+                            continue
+            else:
+                print('sz not rcvd')
+            file.close()
+
+            print(f" Total {current_packet} Packet acknowledged.")
+            print("Data has been transmitted successfully...")
         else:
             messagebox.showerror("Error", "File not found!")
 
