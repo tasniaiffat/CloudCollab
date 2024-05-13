@@ -15,7 +15,7 @@ def file_download(conn):
 
     arr = []
 
-    arr=os.listdir(".\\Server")
+    arr=os.listdir("./Server")
     # conn.send(str(len(arr)).encode(FORMAT))
     send_data = ""
 
@@ -32,7 +32,7 @@ def file_download(conn):
     if filename == "quit": 
         connected = False
         # break
-    filename = ".\\Server\\" + filename  
+    filename = "./Server/" + filename  
 
     filesize = os.path.getsize(filename)
     
@@ -50,12 +50,13 @@ def file_download(conn):
 
 def file_upload(conn):
     
-    # filename = conn.recv(1024).decode()
-    # print(filename)
+    selectedFile = conn.recv(1024).decode()
+    print(selectedFile)
     # filesize = os.path.getsize(filename)
     file_size = conn.recv(1024).decode("utf-8")
     # print(file_size)
-    name = ".\\Server\\new_file.pdf"
+    name = "./Server/"+selectedFile
+    print(name)
     file = open(name, "wb")
 
     progress = tqdm.tqdm(unit="B", unit_scale=True, unit_divisor=1000, total=float(file_size))
