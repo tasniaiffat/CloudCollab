@@ -11,9 +11,10 @@ PORT = 7072
 FORMAT = 'utf-8'
 
 class FileClientApp:
-    def __init__(self, root):
+    def __init__(self, root, client_name):
         self.root = root
-        self.root.title("File Client")
+        self.client_name = client_name
+        self.root.title(f"File Client - {self.client_name}")
         self.root.geometry("500x500")
 
         self.style_gui()
@@ -178,7 +179,32 @@ class FileClientApp:
                 print(f"Error receiving collaboration update: {e}")
                 break
 
+def get_client_name():
+    name_window = tk.Tk()
+    name_window.title("Enter Name")
+    name_window.geometry("300x150")
+    name_window.configure(bg="lightblue")
+
+    tk.Label(name_window, text="Enter your name:", bg="lightblue", fg="black").pack(pady=20)
+
+    name_var = tk.StringVar()
+    name_entry = tk.Entry(name_window, textvariable=name_var, bg="white", fg="black")
+    name_entry.pack(pady=10)
+
+    def submit_name():
+        client_name = name_var.get()
+        if client_name:
+            name_window.destroy()
+            root = tk.Tk()
+            app = FileClientApp(root, client_name)
+            root.mainloop()
+        else:
+            messagebox.showwarning("Input Error", "Name cannot be empty")
+
+    submit_button = tk.Button(name_window, text="Submit", command=submit_name, bg="lightpink", fg="black")
+    submit_button.pack(pady=10)
+
+    name_window.mainloop()
+
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = FileClientApp(root)
-    root.mainloop()
+    get_client_name()
